@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Medi-RAG Test Lab</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --ink:#1c1e21; --mute:#5b6270; --line:#dde1e8; --acc:#2563eb; --ok:#15803d; --bad:#b91c1c; --warn:#92400e; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#14161a; --card:#1d2026; --ink:#e8eaed; --mute:#9aa3b2; --line:#2e333c; --acc:#60a5fa; --ok:#4ade80; --bad:#f87171; --warn:#fbbf24; } }
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, sans-serif; margin: 0; background: var(--bg); color: var(--ink); }
+  main { max-width: 980px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 1.25rem; margin: 0 0 4px; } h2 { font-size: 1rem; margin: 18px 0 8px; }
+  .sub { color: var(--warn); font-size: .85rem; margin-bottom: 12px; }
+  nav { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  nav button { background: var(--card); color: var(--ink); border: 1px solid var(--line); padding: 8px 14px; border-radius: 6px; cursor: pointer; }
+  nav button.on { background: var(--acc); color: #fff; border-color: var(--acc); }
+  section { display: none; } section.on { display: block; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+  input[type=text], input[type=password], select, textarea { width: 100%; padding: 9px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; }
+  button.go { background: var(--acc); color: #fff; border: 0; padding: 9px 16px; border-radius: 6px; cursor: pointer; font: inherit; }
+  button.go:disabled { opacity: .5; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; } .row > input { flex: 1; min-width: 180px; }
+  #log { height: 50vh; overflow-y: auto; }
+  .m { margin: 8px 0; padding: 8px 12px; border-radius: 8px; white-space: pre-wrap; } .u { background: color-mix(in srgb, var(--acc) 18%, var(--card)); margin-left: 12%; } .a { background: var(--bg); margin-right: 4%; }
+  .meta { font-size: .8rem; color: var(--mute); margin-top: 6px; white-space: pre-wrap; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: .75rem; font-weight: 600; }
+  .ok { background: color-mix(in srgb, var(--ok) 20%, transparent); color: var(--ok); } .bad { background: color-mix(in srgb, var(--bad) 20%, transparent); color: var(--bad); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: .88rem; } td, th { padding: 6px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  pre { white-space: pre-wrap; margin: 0; font: inherit; }
+</style>
+</head>
+<body>
+<main>
+<h1>Medi-RAG Test Lab</h1>
+<div class="sub">Educational prototype. Not a diagnosis. See a doctor for medical advice.</div>
+<nav id="tabs"></nav>
+
+<section id="chat"><div class="card">
+  <div class="row" style="margin-bottom:8px"><label for="prov">LLM:</label>
+    <select id="prov" style="width:auto">{% for p in providers %}<option {{ 'selected' if p == default }}>{{ p }}</option>{% endfor %}</select></div>
+  <div id="log"></div>
+  <form id="f" class="row" style="margin-top:10px"><input type="text" id="q" placeholder="e.g. I have had fever and cough for three days" autocomplete="off"><button class="go">Send</button></form>
+</div></section>
+
+<section id="compare"><div class="card">
+  <p class="meta">Sends the same retrieved context + question to every selected LLM, so you can see which models work and how they differ.</p>
+  <div class="row"><input type="text" id="cq" value="What are the warning signs of dengue?"><button class="go" id="cgo">Run comparison</button></div>
+  <div id="cprov" class="row" style="margin-top:8px"></div>
+</div><div id="cout" class="grid"></div></section>
+
+<section id="docs"><div class="card">
+  <h2 style="margin-top:0">Status</h2><div id="stat">loading...</div>
+  <h2>Add trusted documents (PDF / TXT / MD)</h2>
+  <div class="row"><input type="file" id="files" multiple accept=".pdf,.txt,.md"><button class="go" id="upl">Upload &amp; re-index</button></div>
+  <div class="meta" id="uplmsg"></div>
+</div></section>
+
+<section id="keys"><div class="card">
+  <p class="meta">Keys are held in this server's memory only (not saved to disk) and are lost on restart. For permanent use put them in <code>.env</code>.</p>
+  <div class="grid" id="keyform"></div>
+  <p><button class="go" id="savekeys">Apply keys</button></p>
+  <div id="kstat"></div>
+</div></section>
+
+<section id="audit"><div class="card">
+  <p class="meta">Checks a public GitHub repo: which files exist and which are empty.</p>
+  <div class="row"><input type="text" id="repo" value="katakam7007-hash/Medi-Rag"><button class="go" id="ago">Check repo</button></div>
+  <div class="row" style="margin-top:6px">
+    <button class="go" data-r="katakam7007-hash/Medi-Rag">Your repo</button>
+    <button class="go" data-r="entbappy/Build-a-Complete-Medical-Chatbot-with-LLMs-LangChain-Pinecone-Flask-AWS">Reference repo</button></div>
+  <div id="aout" style="margin-top:10px"></div>
+</div></section>
+
+<section id="eval"><div class="card">
+  <p class="meta">Retrieval test from <code>data/eval.json</code>: does the best-matching passage contain the expected keywords? (Tests RAG search only, no LLM.)</p>
+  <button class="go" id="ego">Run retrieval test</button><div id="eout" style="margin-top:10px"></div>
+</div></section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const pill = (ok, t) => `<span class="pill ${ok ? 'ok' : 'bad'}">${esc(t)}</span>`;
+const api = (u, body) => fetch(u, body === undefined ? {} : {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)}).then(r => r.json());
+
+const TABS = [['chat','Chat'],['compare','Compare LLMs'],['docs','Documents & status'],['keys','API keys'],['audit','GitHub repo check'],['eval','Retrieval test']];
+TABS.forEach(([id, label]) => { const b = document.createElement('button'); b.textContent = label; b.onclick = () => show(id); b.dataset.t = id; $('tabs').appendChild(b); });
+function show(id) { document.querySelectorAll('section').forEach(s => s.classList.toggle('on', s.id === id)); document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.t === id)); if (id === 'docs' || id === 'compare' || id === 'keys') refresh(); }
+
+let STATUS = null;
+async function refresh() {
+  STATUS = await api('/api/status');
+  const s = STATUS;
+  $('stat').innerHTML = `<p>Index: ${pill(s.index_chunks > 0, s.index_chunks + ' chunks')} &nbsp; ML disease model: ${pill(s.ml_model, s.ml_model ? 'loaded' : 'not trained (optional)')}</p>
+    <p>Documents: ${s.documents.map(esc).join(', ') || '<em>none</em>'}</p>
+    <table>${Object.entries(s.providers).map(([k, v]) => `<tr><td>${k}</td><td>${pill(v.ready, v.ready ? 'ready' : 'not ready')}</td><td class="meta">${esc(v.note)}</td></tr>`).join('')}</table>`;
+  $('kstat').innerHTML = `<table>${Object.entries(s.providers).map(([k, v]) => `<tr><td>${k}</td><td>${pill(v.ready, v.ready ? 'ready' : 'not ready')}</td><td class="meta">${esc(v.note)}</td></tr>`).join('')}</table>`;
+  $('cprov').innerHTML = Object.entries(s.providers).map(([k, v]) => `<label><input type="checkbox" value="${k}" ${v.ready ? 'checked' : ''}> ${k}</label>`).join(' &nbsp; ');
+}
+$('keyform').innerHTML = ['openai','anthropic','gemini','groq'].map(k => `<div><label>${k}</label><input type="password" data-k="${k}" placeholder="paste key" autocomplete="off"></div>`).join('');
+$('savekeys').onclick = async () => { const keys = {}; document.querySelectorAll('[data-k]').forEach(i => { if (i.value) keys[i.dataset.k] = i.value; i.value = ''; }); await api('/api/keys', keys); refresh(); };
+
+// chat
+const log = $('log'), history = [];
+function add(cls, text) { const d = document.createElement('div'); d.className = 'm ' + cls; d.textContent = text; log.appendChild(d); log.scrollTop = log.scrollHeight; return d; }
+$('f').onsubmit = async e => {
+  e.preventDefault();
+  const message = $('q').value.trim(); if (!message) return;
+  $('q').value = ''; add('u', message); const box = add('a', '...');
+  const d = await api('/chat', {message, history, provider: $('prov').value}).catch(err => ({error: String(err)}));
+  if (d.error) { box.textContent = 'Error: ' + d.error; return; }
+  box.textContent = d.answer;
+  const meta = document.createElement('div'); meta.className = 'meta'; let t = '';
+  if (d.predictions.length) t += 'ML prediction: ' + d.predictions.map(p => p.disease + ' ' + Math.round(p.probability*100) + '%').join(', ') + '\n';
+  if (d.sources.length) t += 'Sources: ' + d.sources.map(s => `[${s.id}] ${s.source} ${s.page}`).join('; ') + '\n';
+  meta.textContent = t + d.disclaimer; box.appendChild(meta);
+  history.push({role:'user', content:message}, {role:'assistant', content:d.answer});
+};
+
+// compare
+$('cgo').onclick = async () => {
+  const providers = [...document.querySelectorAll('#cprov input:checked')].map(i => i.value);
+  if (!providers.length) return;
+  $('cgo').disabled = true; $('cout').innerHTML = '<div class="card">Running...</div>';
+  const d = await api('/api/compare', {message: $('cq').value, providers}).catch(err => ({error: String(err)}));
+  $('cgo').disabled = false;
+  if (d.error) { $('cout').innerHTML = `<div class="card">${pill(false, 'error')} ${esc(d.error)}</div>`; return; }
+  $('cout').innerHTML = d.results.map(r => `<div class="card"><b>${esc(r.provider)}</b> ${pill(r.ok, r.ok ? 'works' : 'failed')} <span class="meta">${r.seconds}s</span>
+    ${r.ok ? `<div class="meta">word overlap with sources: ${Math.round(r.overlap*100)}% (rough heuristic) &middot; cites [n]: ${r.cites ? 'yes' : 'no'}</div><pre style="margin-top:8px">${esc(r.answer)}</pre>` : `<div class="meta" style="color:var(--bad)">${esc(r.error)}</div>`}</div>`).join('');
+};
+
+// docs
+$('upl').onclick = async () => {
+  const fd = new FormData(); [...$('files').files].forEach(f => fd.append('files', f));
+  $('uplmsg').textContent = 'Uploading and indexing...';
+  const d = await fetch('/api/upload', {method:'POST', body: fd}).then(r => r.json());
+  $('uplmsg').textContent = d.error ? 'Error: ' + d.error : `Saved ${d.saved.join(', ')} - index now has ${d.chunks} chunks.`; refresh();
+};
+
+// repo audit
+async function audit(repo) {
+  $('aout').textContent = 'Checking...';
+  const d = await api('/api/repo-check?repo=' + encodeURIComponent(repo));
+  if (d.error) { $('aout').innerHTML = pill(false, 'error') + ' ' + esc(d.error); return; }
+  $('aout').innerHTML = `<p><b>${esc(d.repo)}</b> ${pill(d.verdict !== 'NOT RUNNABLE', d.verdict)}</p>
+    <ul>${d.findings.map(f => `<li>${esc(f)}</li>`).join('') || '<li>No obvious problems found</li>'}</ul>
+    <details><summary>${d.files.length} files</summary><table>${d.files.map(f => `<tr><td>${esc(f.path)}</td><td>${f.bytes} bytes</td></tr>`).join('')}</table></details>`;
+}
+$('ago').onclick = () => audit($('repo').value.trim());
+document.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { $('repo').value = b.dataset.r; audit(b.dataset.r); });
+
+// eval
+$('ego').onclick = async () => {
+  const d = await api('/api/eval');
+  if (d.error) { $('eout').textContent = d.error; return; }
+  $('eout').innerHTML = `<p>Hit rate: <b>${Math.round(d.hit_rate*100)}%</b></p><table>${d.cases.map(c => `<tr><td>${pill(c.hit, c.hit ? 'hit' : 'miss')}</td><td>${esc(c.question)}</td><td class="meta">needs: ${esc(c.expect.join(', '))}<br>top source: ${esc(c.top_source)}</td></tr>`).join('')}</table>`;
+};
+show('chat'); refresh();
+</script>
+</body>
+</html>

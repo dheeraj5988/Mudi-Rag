@@ -1,0 +1,6 @@
+[
+  {"question": "What are the warning signs of dengue?", "expect": ["dengue", "warning signs"]},
+  {"question": "How long does the common cold last?", "expect": ["cold", "seven to ten days"]},
+  {"question": "When should I seek urgent care for the flu?", "expect": ["influenza", "difficulty breathing"]},
+  {"question": "How do I prevent mosquito bites?", "expect": ["mosquito"]}
+]
